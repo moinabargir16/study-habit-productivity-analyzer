@@ -1,10 +1,38 @@
 
 import os
-
+import joblib
+from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
+
+
+@st.cache_resource
+def load_productivity_model():
+    data = pd.read_csv("productivity_data.csv")
+
+    features = [
+        "study_hours",
+        "sleep_hours",
+        "task_completion"
+    ]
+
+    model = DecisionTreeClassifier(
+        max_depth=3,
+        random_state=42
+    )
+
+    model.fit(
+        data[features],
+        data["productivity_level"]
+    )
+
+    return model
+
+
+model = load_productivity_model()
+
 
 # -------------------------------
 # 1. Page settings
@@ -279,4 +307,71 @@ else:
         "These insights describe patterns in your records. "
         "They do not prove that study hours or sleep cause "
         "changes in productivity."
+    )
+
+
+# -------------------------------
+# 8. Productivity level prediction
+# -------------------------------
+
+st.header("🤖 Productivity Level Prediction")
+
+st.write(
+    "Enter your study habits to see the category "
+    "predicted by our demonstration classification model."
+)
+
+with st.form("prediction_form"):
+    prediction_study = st.number_input(
+        "Study hours for prediction",
+        min_value=0.0,
+        max_value=24.0,
+        value=4.0,
+        step=0.5,
+        key="prediction_study"
+    )
+
+    prediction_sleep = st.number_input(
+        "Sleep hours for prediction",
+        min_value=0.0,
+        max_value=24.0,
+        value=7.0,
+        step=0.5,
+        key="prediction_sleep"
+    )
+
+    prediction_completion = st.slider(
+        "Task completion percentage",
+        min_value=0,
+        max_value=100,
+        value=80,
+        key="prediction_completion"
+    )
+
+    predict_clicked = st.form_submit_button(
+        "Predict productivity level"
+    )
+
+if predict_clicked:
+    input_data = pd.DataFrame([{
+        "study_hours": prediction_study,
+        "sleep_hours": prediction_sleep,
+        "task_completion": prediction_completion
+    }])
+
+    predicted_level = model.predict(input_data)[0]
+
+    st.subheader("Prediction result")
+
+    if predicted_level == "High":
+        st.success(f"Predicted category: {predicted_level}")
+    elif predicted_level == "Moderate":
+        st.info(f"Predicted category: {predicted_level}")
+    else:
+        st.warning(f"Predicted category: {predicted_level}")
+
+    st.caption(
+        "This is an educational demonstration using a small, "
+        "artificially labelled dataset. It is not a validated "
+        "measure of personal productivity."
     )
